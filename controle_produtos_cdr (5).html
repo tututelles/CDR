@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CDR — Controle de Produtos</title>
+<script>
+  import supabase from"../config/supabase.js"
+  const home () => {
+    console.log(supabase)
+    return(
+      <div className="page home">
+  <h2>home</h2>
+    </div>
+    )
+  }
+</script>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;700&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;overflow-x:hidden}
+:root{
+  --bg:#0e0f13;--surface:#16181f;--card:#1c1f2a;--border:#2a2d3a;
+  --accent:#6c63ff;--green:#22d3a5;--yellow:#f59e0b;--red:#f43f5e;
+  --text:#e8eaf0;--muted:#7c7f8e;--tag-bg:#252836;
+}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;min-height:100vh}
+
+/* ── SETUP BANNER ── */
+#setupBanner{display:none!important}
+.setup-header{
+  display:flex;align-items:center;gap:12px;
+  padding:12px 24px;
+  background:rgba(108,99,255,.12);
+  border-bottom:1px solid var(--border);
+  cursor:pointer;user-select:none;
+}
+.setup-header svg{flex-shrink:0}
+.setup-title{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:15px;color:var(--text)}
+.setup-sub{font-size:12px;color:var(--muted);margin-top:1px}
+.setup-chevron{margin-left:auto;color:var(--muted);transition:transform .2s}
+.setup-chevron.open{transform:rotate(180deg)}
+.setup-body{padding:20px 24px 24px;display:none;gap:20px;flex-direction:column}
+.setup-body.open{display:flex}
+.setup-steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.setup-step{
+  background:rgba(255,255,255,.04);border:1px solid var(--border);
+  border-radius:12px;padding:16px 18px;
+}
+.step-num{
+  width:24px;height:24px;border-radius:50%;background:var(--accent);
+  color:#fff;font-size:11px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;
+  margin-bottom:10px;
+}
+.step-title{font-weight:600;font-size:13px;margin-bottom:6px}
+.step-desc{font-size:12px;color:var(--muted);line-height:1.6}
+.step-desc code{
+  background:rgba(108,99,255,.18);color:var(--accent2,#a78bfa);
+  padding:1px 5px;border-radius:4px;font-family:monospace;font-size:11px;
+}
+.setup-input-row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.setup-field{display:flex;flex-direction:column;gap:5px;flex:1;min-width:200px}
+.setup-field label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.6px}
+.setup-field input{
+  background:var(--surface);border:1px solid var(--border);border-radius:8px;
+  padding:9px 12px;color:var(--text);font-family:'Inter',sans-serif;font-size:13px;outline:none;
+  transition:border .15s;
+}
+.setup-field input:focus{border-color:var(--accent)}
+.setup-field input::placeholder{color:var(--muted)}
+.btn-connect{
+  background:var(--accent);border:none;border-radius:8px;
+  padding:10px 20px;color:#fff;font-family:'Inter',sans-serif;
+  font-weight:600;font-size:13px;cursor:pointer;white-space:nowrap;
+  transition:opacity .15s;
+}
+.btn-connect:hover{opacity:.85}
+.setup-status{font-size:12px;padding:8px 12px;border-radius:8px;display:none}
+.setup-status.ok  {display:block;background:rgba(34,211,165,.1);color:var(--green);border:1px solid rgba(34,211,165,.25)}
+.setup-status.err {display:block;background:rgba(244,63,94,.1); color:var(--red);  border:1px solid rgba(244,63,94,.25)}
+
+/* ── HEADER ── */
+header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 20px;display:flex;align-items:center;gap:12px;height:60px;position:sticky;top:0;z-index:100}
+.menu-toggle{width:38px;height:38px;border:none;border-radius:8px;background:var(--card);color:var(--text);cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;transition:.2s;flex-shrink:0}
+.menu-toggle:hover{background:var(--accent);color:#fff}
+.logo{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:18px;letter-spacing:-.5px;display:flex;align-items:center;gap:8px;white-space:nowrap}
+.logo span{color:var(--accent)}
+.header-sep{flex:1}
+.sync-pill{display:flex;align-items:center;gap:7px;background:var(--tag-bg);border:1px solid var(--border);border-radius:20px;padding:5px 13px;font-size:12px;color:var(--muted);cursor:pointer;transition:border .15s;white-space:nowrap}
+.sync-pill:hover{border-color:var(--accent);color:var(--text)}
+.sync-dot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex-shrink:0;transition:background .3s}
+.sync-dot.ok  {background:var(--green)}
+.sync-dot.err {background:var(--red)}
+.sync-dot.busy{background:var(--yellow);animation:blink 1s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+
+/* ── LAYOUT ── */
+.app{display:flex;height:calc(100vh - 60px);overflow:hidden}
+
+/* ── SIDEBAR ── */
+aside{
+  width:220px;min-width:220px;
+  background:var(--surface);border-right:1px solid var(--border);
+  padding:20px 12px;display:flex;flex-direction:column;gap:6px;overflow-y:auto;
+  transition:width .25s,min-width .25s,padding .25s,transform .25s;
+  box-shadow:8px 0 30px rgba(0,0,0,.35);
+  flex-shrink:0;
+}
+aside.closed{width:0;min-width:0;padding:20px 0;overflow:hidden;border-right:none}
+@media(max-width:900px){
+  aside{position:fixed;top:60px;left:0;height:calc(100vh - 60px);width:260px;min-width:260px;z-index:500;transform:translateX(-100%)}
+  aside.open{transform:translateX(0)}
+}
+.side-label{font-size:10px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);padding:0 8px;margin:10px 0 4px}
+.side-btn{background:none;border:none;color:var(--muted);font-family:'Inter',sans-serif;font-size:13px;padding:8px 10px;border-radius:8px;cursor:pointer;text-align:left;transition:background .15s,color .15s;display:flex;align-items:center;gap:8px;width:100%}
+.side-btn:hover{background:var(--card);color:var(--text)}
+.side-btn.active{background:var(--accent);color:#fff}
+.side-count{margin-left:auto;background:var(--tag-bg);border-radius:10px;padding:1px 7px;font-size:11px;color:var(--muted)}
+.side-btn.active .side-count{background:rgba(255,255,255,.2);color:#fff}
+
+/* ── MAIN ── */
+main{flex:1;overflow-y:auto;overflow-x:hidden;padding:20px}
+
+/* ── STATS ── */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:20px}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 18px;display:flex;flex-direction:column;gap:5px}
+.stat-label{font-size:11px;color:var(--muted);font-weight:500}
+.stat-value{font-family:'Space Grotesk',sans-serif;font-size:24px;font-weight:700;line-height:1}
+.stat-value.green{color:var(--green)}.stat-value.yellow{color:var(--yellow)}.stat-value.red{color:var(--red)}
+.stat-sub{font-size:11px;color:var(--muted)}
+
+/* ── CONTROLS ── */
+.controls{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
+.search-wrap{position:relative;flex:1;min-width:160px}
+.search-wrap svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);pointer-events:none}
+#searchInput{width:100%;background:var(--card);border:1px solid var(--border);border-radius:9px;padding:9px 12px 9px 32px;color:var(--text);font-family:'Inter',sans-serif;font-size:13px;outline:none;transition:border .15s}
+#searchInput:focus{border-color:var(--accent)}
+#searchInput::placeholder{color:var(--muted)}
+select,.btn{background:var(--card);border:1px solid var(--border);border-radius:9px;padding:9px 12px;color:var(--text);font-family:'Inter',sans-serif;font-size:13px;cursor:pointer;outline:none}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600;display:flex;align-items:center;gap:6px;transition:opacity .15s}
+.btn-primary:hover{opacity:.85}
+.view-toggle{display:flex;gap:4px;background:var(--card);border:1px solid var(--border);border-radius:9px;padding:3px}
+.vt-btn{background:none;border:none;border-radius:6px;padding:5px 8px;cursor:pointer;color:var(--muted);transition:background .15s,color .15s;display:flex;align-items:center}
+.vt-btn.active{background:var(--accent);color:#fff}
+
+/* ── TABLE ── */
+.table-wrap{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{width:100%;border-collapse:collapse;min-width:700px}
+thead{background:var(--surface)}
+th{text-align:left;padding:11px 14px;font-size:11px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);white-space:nowrap;cursor:pointer;user-select:none}
+th:hover{color:var(--text)}
+tbody tr{border-top:1px solid var(--border);transition:background .12s}
+tbody tr:hover{background:rgba(108,99,255,.05)}
+td{padding:9px 14px;vertical-align:middle}
+.td-name{font-weight:500}
+.tag-col{display:inline-block;background:var(--tag-bg);border:1px solid var(--border);border-radius:6px;padding:2px 7px;font-size:11px;color:var(--muted)}
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:4px 9px;border-radius:20px;white-space:nowrap}
+.badge-em {background:rgba(34,211,165,.12);color:var(--green)}
+.badge-qa {background:rgba(245,158,11,.12); color:var(--yellow)}
+.badge-es {background:rgba(244,63,94,.12);  color:var(--red)}
+
+/* ── STOCK BAR ── */
+.stock-bar{display:flex;align-items:center;gap:8px}
+.bar-track{flex:1;height:4px;background:var(--border);border-radius:4px;overflow:hidden;min-width:50px}
+.bar-fill{height:100%;border-radius:4px;transition:width .4s}
+.stock-num{min-width:28px;text-align:right;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:14px}
+
+/* ── QUICK STOCK ── */
+.qstock{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.qs-btn{width:28px;height:28px;border-radius:7px;border:1px solid var(--border);background:var(--tag-bg);color:var(--text);font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .12s,border .12s,transform .1s;flex-shrink:0;line-height:1;user-select:none}
+.qs-btn:hover{background:var(--accent);border-color:var(--accent);color:#fff}
+.qs-btn.minus:hover{background:var(--red);border-color:var(--red)}
+.qs-btn:active{transform:scale(.88)}
+.qs-input{width:50px;text-align:center;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:4px 2px;color:var(--text);font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:14px;outline:none;transition:border .15s;-moz-appearance:textfield}
+.qs-input::-webkit-outer-spin-button,.qs-input::-webkit-inner-spin-button{-webkit-appearance:none}
+.qs-input:focus{border-color:var(--accent)}
+.qs-save{font-size:11px;padding:4px 9px;border-radius:6px;border:1px solid var(--accent);background:transparent;color:var(--accent);cursor:pointer;font-family:'Inter',sans-serif;font-weight:600;transition:background .12s,color .12s;white-space:nowrap}
+.qs-save:hover{background:var(--accent);color:#fff}
+.qs-save.hide{display:none}
+
+/* ── ACTIONS ── */
+.actions{display:flex;gap:5px}
+.icon-btn{background:var(--tag-bg);border:1px solid var(--border);border-radius:7px;padding:5px 7px;cursor:pointer;color:var(--muted);transition:background .12s,color .12s;display:flex;align-items:center;font-size:12px}
+.icon-btn:hover    {background:var(--accent);border-color:var(--accent);color:#fff}
+.icon-btn.del:hover{background:var(--red);   border-color:var(--red)}
+
+/* ── GRID ── */
+.grid-view{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
+.grid-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;transition:border-color .15s,transform .15s}
+.grid-card:hover{border-color:var(--accent);transform:translateY(-2px)}
+.gc-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:10px}
+.gc-name{font-weight:600;font-size:14px;line-height:1.35}
+.gc-tags{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px}
+.gc-qstock{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
+.gc-qstock .qs-btn  {width:32px;height:32px;font-size:18px}
+.gc-qstock .qs-input{width:52px;font-size:15px}
+.gc-qstock .qs-save {flex:1}
+
+/* ── MODAL ── */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;z-index:200;opacity:0;pointer-events:none;transition:opacity .2s}
+.overlay.open{opacity:1;pointer-events:all}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:18px;width:480px;max-width:96vw;padding:26px;transform:translateY(12px);transition:transform .2s}
+.overlay.open .modal{transform:translateY(0)}
+.modal-title{font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;margin-bottom:18px;display:flex;justify-content:space-between;align-items:center}
+.modal-close{background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer}
+.modal-close:hover{color:var(--text)}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-group{display:flex;flex-direction:column;gap:5px}
+.form-group.full{grid-column:1/-1}
+label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.6px}
+input[type="text"],input[type="number"],select.modal-sel{background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:9px 12px;color:var(--text);font-family:'Inter',sans-serif;font-size:13px;outline:none;transition:border .15s}
+input[type="text"]:focus,input[type="number"]:focus,select.modal-sel:focus{border-color:var(--accent)}
+.modal-actions{display:flex;gap:10px;margin-top:18px;justify-content:flex-end}
+
+/* ── EMPTY / TOAST ── */
+.empty{text-align:center;padding:50px 20px;color:var(--muted)}
+.empty-icon{font-size:36px;margin-bottom:10px}
+.toast-area{position:fixed;bottom:20px;right:20px;z-index:300;display:flex;flex-direction:column;gap:8px}
+.toast{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:11px 15px;font-size:13px;animation:slideIn .25s ease;display:flex;align-items:center;gap:8px;box-shadow:0 4px 20px rgba(0,0,0,.4);max-width:320px}
+.toast.success{border-left:3px solid var(--green)}
+.toast.warn   {border-left:3px solid var(--yellow)}
+.toast.error  {border-left:3px solid var(--red)}
+@keyframes slideIn{from{transform:translateX(50px);opacity:0}to{transform:translateX(0);opacity:1}}
+
+/* ── OVERLAY ESCURECIDO SIDEBAR MOBILE ── */
+#sideOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:499}
+@media(max-width:900px){#sideOverlay.show{display:block}}
+</style>
+</head>
+<body>
+
+<!-- ── SETUP BANNER ── -->
+<div id="setupBanner">
+  <div class="setup-header" onclick="toggleSetup()">
+    <svg width="20" height="20" fill="none" stroke="#6c63ff" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93A10 10 0 1 0 4.93 19.07"/><path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+    <div>
+      <div class="setup-title">⚙️ Configurar banco de dados Supabase</div>
+      <div class="setup-sub">Conecte para sincronizar com todos os usuários em tempo real</div>
+    </div>
+    <svg class="setup-chevron" id="setupChevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+  </div>
+  <div class="setup-body" id="setupBody">
+    <div class="setup-steps">
+      <div class="setup-step">
+        <div class="step-num">1</div>
+        <div class="step-title">Criar conta gratuita</div>
+        <div class="step-desc">Acesse <a href="https://supabase.com" target="_blank" style="color:var(--accent)">supabase.com</a> → New Project → anote a <code>URL</code> e a chave <code>anon key</code> do projeto.</div>
+      </div>
+      <div class="setup-step">
+        <div class="step-num">2</div>
+        <div class="step-title">Criar a tabela</div>
+        <div class="step-desc">No SQL Editor do Supabase, cole e execute:<br><br>
+          <code>create table produtos (id bigint generated always as identity primary key, nome text, tipo text, coluna text, estoque int default 0, status text);</code>
+        </div>
+      </div>
+      <div class="setup-step">
+        <div class="step-num">3</div>
+        <div class="step-title">Habilitar acesso público</div>
+        <div class="step-desc">Em <code>Authentication → Policies</code>, adicione uma policy <code>Allow all</code> na tabela <code>produtos</code> — ou rode:<br><br>
+          <code>alter table produtos enable row level security; create policy "public" on produtos for all using (true) with check (true);</code>
+        </div>
+      </div>
+    </div>
+    <div class="setup-input-row">
+      <div class="setup-field">
+        <label>URL do Projeto Supabase</label>
+        <input type="text" id="cfgUrl" placeholder="https://xxxxxxxxxxxx.supabase.co">
+      </div>
+      <div class="setup-field">
+        <label>Anon Key (chave pública)</label>
+        <input type="text" id="cfgKey" placeholder="eyJhbGciOiJIUzI1NiIsInR5c...">
+      </div>
+      <button class="btn-connect" onclick="connectSupabase()">Conectar →</button>
+    </div>
+    <div id="setupStatus" class="setup-status"></div>
+  </div>
+</div>
+
+<!-- ── HEADER ── -->
+<header>
+  <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+  <div class="logo">◆ <span>CDR</span> Produtos</div>
+  <div class="header-sep"></div>
+  <div class="sync-pill" onclick="syncNow()" title="Clique para sincronizar agora">
+    <div class="sync-dot busy" id="syncDot"></div>
+    <span id="syncLabel">Conectando…</span>
+  </div>
+</header>
+
+<div id="sideOverlay" onclick="closeSidebar()"></div>
+
+<div class="app">
+  <aside id="sidebar">
+    <div class="side-label">Status</div>
+    <button class="side-btn active" onclick="filterStatus('todos',this)">📦 Todos <span class="side-count" id="cnt-todos">0</span></button>
+    <button class="side-btn" onclick="filterStatus('Em Estoque',this)">✅ Em Estoque <span class="side-count" id="cnt-estoque">0</span></button>
+    <button class="side-btn" onclick="filterStatus('Quase Acabando',this)">⚠️ Quase Acabando <span class="side-count" id="cnt-quase">0</span></button>
+    <button class="side-btn" onclick="filterStatus('Esgotado',this)">🔴 Esgotado <span class="side-count" id="cnt-esgotado">0</span></button>
+    <div class="side-label">Tipo</div>
+    <div id="tipoFilters"></div>
+    <div class="side-label">Coluna</div>
+    <div id="colunaFilters"></div>
+  </aside>
+
+  <main>
+    <div class="stats">
+      <div class="stat-card"><div class="stat-label">Total de Produtos</div><div class="stat-value" id="s-total">—</div><div class="stat-sub">itens cadastrados</div></div>
+      <div class="stat-card"><div class="stat-label">Unidades em Estoque</div><div class="stat-value green" id="s-unidades">—</div><div class="stat-sub">disponíveis</div></div>
+      <div class="stat-card"><div class="stat-label">Quase Acabando</div><div class="stat-value yellow" id="s-quase">—</div><div class="stat-sub">precisam de reposição</div></div>
+      <div class="stat-card"><div class="stat-label">Esgotados</div><div class="stat-value red" id="s-esgotados">—</div><div class="stat-sub">sem estoque</div></div>
+    </div>
+
+    <div class="controls">
+      <div class="search-wrap">
+        <svg width="13" height="13" fill="none" stroke="#7c7f8e" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        <input id="searchInput" type="text" placeholder="Buscar produto…" oninput="render()">
+      </div>
+      <select id="sortSel" onchange="render()">
+        <option value="nome">Nome ↕</option>
+        <option value="estoque-desc">Estoque ↓</option>
+        <option value="estoque-asc">Estoque ↑</option>
+        <option value="status">Status ↕</option>
+      </select>
+      <div class="view-toggle">
+        <button class="vt-btn active" id="vt-table" onclick="setView('table')" title="Tabela">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+        </button>
+        <button class="vt-btn" id="vt-grid" onclick="setView('grid')" title="Cards">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        </button>
+      </div>
+      <button class="btn btn-primary" onclick="openModal()">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+        Novo
+      </button>
+    </div>
+
+    <div id="tableView">
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th onclick="toggleSort('nome')">Nome ↕</th>
+            <th onclick="toggleSort('tipo')">Tipo ↕</th>
+            <th onclick="toggleSort('coluna')">Coluna ↕</th>
+            <th onclick="toggleSort('estoque')">Estoque ↕</th>
+            <th>Ajuste Rápido</th>
+            <th>Status</th>
+            <th>Ações</th>
+          </tr></thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div id="gridView" style="display:none"><div class="grid-view" id="gridBody"></div></div>
+  </main>
+</div>
+
+<!-- MODAL -->
+<div class="overlay" id="overlay" onclick="closeModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-title">
+      <span id="modalTitle">Novo Produto</span>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group full"><label>Nome</label><input type="text" id="f-nome" placeholder="Ex: Tirante Bateria"></div>
+      <div class="form-group"><label>Tipo</label><input type="text" id="f-tipo" placeholder="Ex: Tirante"></div>
+      <div class="form-group"><label>Coluna</label><input type="text" id="f-coluna" placeholder="Ex: Grosso"></div>
+      <div class="form-group"><label>Estoque</label><input type="number" id="f-estoque" placeholder="0" min="0"></div>
+      <div class="form-group"><label>Status</label>
+        <select class="modal-sel" id="f-status">
+          <option>Em Estoque</option><option>Quase Acabando</option><option>Esgotado</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveProduct()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-area" id="toastArea"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  CONFIGURAÇÃO SUPABASE
+//  Salva em localStorage para não precisar reconfigurar
+// ═══════════════════════════════════════════════════════
+let SUPA_URL = 'https://jcdztjyaqgasngkbrnzc.supabase.co';
+let SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpjZHp0anlhcWdhc25na2JybnpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2NzE4MjksImV4cCI6MjA5ODI0NzgyOX0.zePIAG9Xye1qRVss_VZt-waeMOD1665rOAnnnr28QHM';
+let supabaseOk = true;
+
+function supaFetch(path, opts = {}) {
+  return fetch(`${SUPA_URL}/rest/v1/${path}`, {
+    ...opts,
+    headers: {
+      'apikey': SUPA_KEY,
+      'Authorization': `Bearer ${SUPA_KEY}`,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=representation',
+      ...(opts.headers || {}),
+    },
+  });
+}
+
+async function connectSupabase() {
+  const url = document.getElementById('cfgUrl').value.trim().replace(/\/$/, '');
+  const key = document.getElementById('cfgKey').value.trim();
+  const st  = document.getElementById('setupStatus');
+  if (!url || !key) { st.className='setup-status err'; st.textContent='Preencha URL e chave.'; return; }
+
+  st.className='setup-status'; st.textContent=''; st.style.display='none';
+  SUPA_URL = url; SUPA_KEY = key;
+
+  try {
+    const r = await fetch(`${url}/rest/v1/produtos?limit=1`, {
+      headers:{'apikey':key,'Authorization':`Bearer ${key}`}
+    });
+    if (!r.ok) throw new Error(`HTTP ${r.status} — verifique URL e chave`);
+    localStorage.setItem('cdr_supa_url', url);
+    localStorage.setItem('cdr_supa_key', key);
+    supabaseOk = true;
+    st.className='setup-status ok'; st.textContent='✅ Conectado! Carregando produtos…';
+    setTimeout(()=>{ document.getElementById('setupBanner').classList.remove('show'); }, 1200);
+    await syncNow();
+  } catch(e) {
+    st.className='setup-status err'; st.textContent='❌ Erro: ' + e.message;
+  }
+}
+
+function toggleSetup() {
+  const body    = document.getElementById('setupBody');
+  const chevron = document.getElementById('setupChevron');
+  body.classList.toggle('open');
+  chevron.classList.toggle('open');
+}
+
+// ═══════════════════════════════════════════════════════
+//  DADOS LOCAIS (fallback quando sem Supabase)
+// ═══════════════════════════════════════════════════════
+const FALLBACK = [
+  {id:1, nome:"Tirante Bateria",          tipo:"Tirante",coluna:"Grosso",estoque:29,status:"Em Estoque"},
+  {id:2, nome:"Tirante Campeões",         tipo:"Tirante",coluna:"Grosso",estoque:16,status:"Em Estoque"},
+  {id:3, nome:"Tirante Intermed",         tipo:"Tirante",coluna:"Fino",  estoque:8, status:"Em Estoque"},
+  {id:4, nome:"Tirante Junino",           tipo:"Tirante",coluna:"Grosso",estoque:14,status:"Em Estoque"},
+  {id:5, nome:"Tirante LGBT",             tipo:"Tirante",coluna:"Grosso",estoque:8, status:"Em Estoque"},
+  {id:6, nome:"Tirante LGBT",             tipo:"Tirante",coluna:"Fino",  estoque:9, status:"Em Estoque"},
+  {id:7, nome:"Tirante Tradicional",      tipo:"Tirante",coluna:"Grosso",estoque:38,status:"Em Estoque"},
+  {id:8, nome:"Tirante Interce",          tipo:"Tirante",coluna:"Fino",  estoque:24,status:"Em Estoque"},
+  {id:9, nome:"Tirante Bateria",          tipo:"Tirante",coluna:"Fino",  estoque:2, status:"Quase Acabando"},
+  {id:10,nome:"Tirante Especial",         tipo:"Tirante",coluna:"Grosso",estoque:2, status:"Quase Acabando"},
+  {id:11,nome:"Tirante Integra Clássico", tipo:"Tirante",coluna:"Fino",  estoque:2, status:"Quase Acabando"},
+  {id:12,nome:"Tirante Tradicional",      tipo:"Tirante",coluna:"Fino",  estoque:2, status:"Quase Acabando"},
+  {id:13,nome:"Produto sem estoque A",    tipo:"—",      coluna:"—",     estoque:0, status:"Esgotado"},
+  {id:14,nome:"Produto sem estoque B",    tipo:"—",      coluna:"—",     estoque:0, status:"Esgotado"},
+];
+
+let products    = JSON.parse(JSON.stringify(FALLBACK));
+let pendingStock = {};
+
+// ═══════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════
+let activeStatus  = 'todos';
+let activeTipos   = new Set();
+let activeColunas = new Set();
+let currentView   = 'table';
+let editingId     = null;
+
+// ═══════════════════════════════════════════════════════
+//  SYNC
+// ═══════════════════════════════════════════════════════
+function setSyncUI(state, label) {
+  document.getElementById('syncDot').className = 'sync-dot ' + state;
+  document.getElementById('syncLabel').textContent = label;
+}
+
+async function syncNow() {
+  if (!supabaseOk) { setSyncUI('err', 'Configure o Supabase ↑'); return; }
+  setSyncUI('busy', 'Sincronizando…');
+  try {
+    const r = await supaFetch('produtos?order=id');
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    products = await r.json();
+    setSyncUI('ok', `Atualizado ${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}`);
+    render();
+  } catch(e) {
+    setSyncUI('err', 'Erro: ' + e.message);
+  }
+}
+
+// Realtime via Supabase Realtime (long-poll simples a cada 10s)
+setInterval(()=>{ if(supabaseOk) syncNow(); }, 10000);
+
+// ═══════════════════════════════════════════════════════
+//  STATUS AUTO
+// ═══════════════════════════════════════════════════════
+function autoStatus(q) {
+  return q <= 0 ? 'Esgotado' : q <= 5 ? 'Quase Acabando' : 'Em Estoque';
+}
+
+// ═══════════════════════════════════════════════════════
+//  AJUSTE RÁPIDO DE ESTOQUE
+// ═══════════════════════════════════════════════════════
+function adjustStock(id, delta) {
+  const p = products.find(x => x.id === id);
+  if (!p) return;
+  commitStock(id, Math.max(0, p.estoque + delta));
+}
+
+async function commitStock(id, novoQ) {
+  const p = products.find(x => x.id === id);
+  if (!p) return;
+  const oldQ = p.estoque;
+  p.estoque = novoQ;
+  p.status  = autoStatus(novoQ);
+  delete pendingStock[id];
+  render();
+
+  if (supabaseOk) {
+    try {
+      const r = await supaFetch(`produtos?id=eq.${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ estoque: novoQ, status: p.status }),
+      });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      setSyncUI('ok', `Salvo às ${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}`);
+      toast(`${p.nome}: ${oldQ} → ${novoQ}`, 'success');
+    } catch(e) {
+      setSyncUI('err', 'Erro: ' + e.message);
+      toast('Erro ao salvar: ' + e.message, 'error');
+    }
+  } else {
+    toast(`${p.nome}: ${oldQ} → ${novoQ} (local)`, 'warn');
+  }
+}
+
+function onStockInput(id, val) {
+  pendingStock[id] = Math.max(0, parseInt(val) || 0);
+  const btn = document.getElementById(`qs-save-${id}`);
+  if (btn) btn.classList.remove('hide');
+}
+
+function saveStockInput(id) {
+  if (pendingStock[id] === undefined) return;
+  commitStock(id, pendingStock[id]);
+}
+
+// ═══════════════════════════════════════════════════════
+//  CRUD
+// ═══════════════════════════════════════════════════════
+async function saveProduct() {
+  const nome   = document.getElementById('f-nome').value.trim();
+  const tipo   = document.getElementById('f-tipo').value.trim()   || '—';
+  const coluna = document.getElementById('f-coluna').value.trim() || '—';
+  const estoque= parseInt(document.getElementById('f-estoque').value) || 0;
+  const status = document.getElementById('f-status').value;
+  if (!nome) { toast('Informe o nome', 'error'); return; }
+
+  const body = { nome, tipo, coluna, estoque, status };
+
+  if (editingId) {
+    // UPDATE
+    const idx = products.findIndex(p => p.id === editingId);
+    products[idx] = { ...products[idx], ...body };
+    if (supabaseOk) {
+      try {
+        const r = await supaFetch(`produtos?id=eq.${editingId}`, { method:'PATCH', body:JSON.stringify(body) });
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      } catch(e) { toast('Erro: '+e.message, 'error'); }
+    }
+    toast('Produto atualizado', 'success');
+  } else {
+    // INSERT
+    if (supabaseOk) {
+      try {
+        const r = await supaFetch('produtos', { method:'POST', body:JSON.stringify(body) });
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const [inserted] = await r.json();
+        products.push(inserted);
+      } catch(e) { toast('Erro: '+e.message, 'error'); }
+    } else {
+      body.id = Math.max(...products.map(p=>p.id),0)+1;
+      products.push(body);
+    }
+    toast('Produto adicionado', 'success');
+  }
+  closeModal(); render();
+}
+
+async function deleteProduct(id) {
+  const p = products.find(x => x.id === id);
+  if (!confirm(`Excluir "${p?.nome}"?`)) return;
+  products = products.filter(x => x.id !== id);
+  if (supabaseOk) {
+    try {
+      const r = await supaFetch(`produtos?id=eq.${id}`, { method:'DELETE' });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    } catch(e) { toast('Erro: '+e.message, 'error'); }
+  }
+  toast('Produto removido', 'warn'); render();
+}
+
+// ═══════════════════════════════════════════════════════
+//  FILTRO / SORT / RENDER
+// ═══════════════════════════════════════════════════════
+function filtered() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  return products.filter(p => {
+    if (activeStatus !== 'todos' && p.status !== activeStatus) return false;
+    if (activeTipos.size   && !activeTipos.has(p.tipo))   return false;
+    if (activeColunas.size && !activeColunas.has(p.coluna)) return false;
+    if (q && !p.nome.toLowerCase().includes(q) && !p.tipo.toLowerCase().includes(q) && !p.coluna.toLowerCase().includes(q)) return false;
+    return true;
+  });
+}
+
+function sorted(arr) {
+  const v = document.getElementById('sortSel').value;
+  return [...arr].sort(
+    v==='estoque-desc'?(a,b)=>b.estoque-a.estoque:
+    v==='estoque-asc' ?(a,b)=>a.estoque-b.estoque:
+    v==='status'      ?(a,b)=>a.status.localeCompare(b.status):
+                       (a,b)=>a.nome.localeCompare(b.nome));
+}
+
+function render() {
+  updateStats(); buildSide();
+  const data = sorted(filtered());
+  currentView==='table'?renderTable(data):renderGrid(data);
+}
+
+function updateStats() {
+  const q=products.filter(p=>p.status==='Quase Acabando').length;
+  const e=products.filter(p=>p.status==='Esgotado').length;
+  document.getElementById('s-total').textContent    = products.length;
+  document.getElementById('s-unidades').textContent = products.reduce((a,p)=>a+(p.estoque||0),0);
+  document.getElementById('s-quase').textContent    = q;
+  document.getElementById('s-esgotados').textContent= e;
+  document.getElementById('cnt-todos').textContent   = products.length;
+  document.getElementById('cnt-estoque').textContent = products.filter(p=>p.status==='Em Estoque').length;
+  document.getElementById('cnt-quase').textContent   = q;
+  document.getElementById('cnt-esgotado').textContent= e;
+}
+
+// ── VISUAL HELPERS ──
+const BADGE={
+  'Em Estoque':    ['badge-em','● Em Estoque'],
+  'Quase Acabando':['badge-qa','● Quase Acabando'],
+  'Esgotado':      ['badge-es','● Esgotado'],
+};
+function badgeHTML(s){const[c,t]=BADGE[s]||BADGE['Esgotado'];return`<span class="badge ${c}">${t}</span>`}
+function barColor(s){return s==='Em Estoque'?'#22d3a5':s==='Quase Acabando'?'#f59e0b':'#f43f5e'}
+function barPct(q){const mx=Math.max(...products.map(p=>p.estoque||0),1);return Math.round((q/mx)*100)}
+
+function stockBarHTML(p){
+  const c=barColor(p.status);
+  return`<div class="stock-bar"><div class="bar-track"><div class="bar-fill" style="width:${barPct(p.estoque)}%;background:${c}"></div></div><span class="stock-num" style="color:${c}">${p.estoque}</span></div>`;
+}
+
+function qstockHTML(p,extra=''){
+  const cur=pendingStock[p.id]!==undefined?pendingStock[p.id]:p.estoque;
+  const hp=pendingStock[p.id]!==undefined;
+  return`<div class="qstock ${extra}">
+    <button class="qs-btn minus" onclick="adjustStock(${p.id},-1)" title="−1">−</button>
+    <input class="qs-input" type="number" min="0" value="${cur}" id="qs-in-${p.id}"
+      oninput="onStockInput(${p.id},this.value)"
+      onkeydown="if(event.key==='Enter'){saveStockInput(${p.id});this.blur()}">
+    <button class="qs-btn" onclick="adjustStock(${p.id},+1)" title="+1">+</button>
+    <button class="qs-save ${hp?'':'hide'}" id="qs-save-${p.id}" onclick="saveStockInput(${p.id})">Salvar</button>
+  </div>`;
+}
+
+// ── TABLE ──
+function renderTable(data){
+  const tb=document.getElementById('tableBody');
+  if(!data.length){tb.innerHTML=`<tr><td colspan="7"><div class="empty"><div class="empty-icon">📭</div>Nenhum produto encontrado</div></td></tr>`;return}
+  tb.innerHTML=data.map(p=>`<tr>
+    <td class="td-name">${p.nome}</td>
+    <td><span class="tag-col">${p.tipo}</span></td>
+    <td><span class="tag-col">${p.coluna}</span></td>
+    <td>${stockBarHTML(p)}</td>
+    <td>${qstockHTML(p)}</td>
+    <td>${badgeHTML(p.status)}</td>
+    <td><div class="actions">
+      <button class="icon-btn" onclick="openModal(${p.id})" title="Editar">✏️</button>
+      <button class="icon-btn del" onclick="deleteProduct(${p.id})" title="Excluir">🗑</button>
+    </div></td>
+  </tr>`).join('');
+}
+
+// ── GRID ──
+function renderGrid(data){
+  const g=document.getElementById('gridBody');
+  if(!data.length){g.innerHTML=`<div class="empty"><div class="empty-icon">📭</div>Nenhum produto encontrado</div>`;return}
+  g.innerHTML=data.map(p=>{
+    const c=barColor(p.status);
+    return`<div class="grid-card">
+      <div class="gc-head">
+        <div class="gc-name">${p.nome}</div>
+        <div class="actions">
+          <button class="icon-btn" onclick="openModal(${p.id})">✏️</button>
+          <button class="icon-btn del" onclick="deleteProduct(${p.id})">🗑</button>
+        </div>
+      </div>
+      <div class="gc-tags"><span class="tag-col">${p.tipo}</span><span class="tag-col">${p.coluna}</span></div>
+      ${badgeHTML(p.status)}
+      <div style="margin-top:10px"><div class="bar-track"><div class="bar-fill" style="width:${barPct(p.estoque)}%;background:${c}"></div></div></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
+        <span style="font-size:11px;color:var(--muted)">Estoque</span>
+        <span style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:22px;color:${c}">${p.estoque}</span>
+      </div>
+      ${qstockHTML(p,'gc-qstock')}
+    </div>`;
+  }).join('');
+}
+
+// ── SIDEBAR ──
+function buildSide(){
+  const tipos  =[...new Set(products.map(p=>p.tipo).filter(t=>t&&t!=='—'))].sort();
+  const colunas=[...new Set(products.map(p=>p.coluna).filter(c=>c&&c!=='—'))].sort();
+  document.getElementById('tipoFilters').innerHTML=tipos.map(t=>
+    `<button class="side-btn ${activeTipos.has(t)?'active':''}" onclick="toggleFilter('tipo','${t}',this)">${t}<span class="side-count">${products.filter(p=>p.tipo===t).length}</span></button>`).join('');
+  document.getElementById('colunaFilters').innerHTML=colunas.map(c=>
+    `<button class="side-btn ${activeColunas.has(c)?'active':''}" onclick="toggleFilter('coluna','${c}',this)">${c}<span class="side-count">${products.filter(p=>p.coluna===c).length}</span></button>`).join('');
+}
+
+function filterStatus(s,btn){
+  activeStatus=s;
+  document.querySelectorAll('aside .side-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');activeTipos.clear();activeColunas.clear();render();
+}
+function toggleFilter(field,val,btn){
+  const set=field==='tipo'?activeTipos:activeColunas;
+  set.has(val)?set.delete(val):set.add(val);
+  btn.classList.toggle('active');
+  activeStatus='todos';
+  document.querySelectorAll('aside .side-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelector('aside .side-btn')?.classList.add('active');
+  render();
+}
+function toggleSort(f){document.getElementById('sortSel').value=f;render()}
+
+// ── VIEW ──
+function setView(v){
+  currentView=v;
+  document.getElementById('tableView').style.display=v==='table'?'':'none';
+  document.getElementById('gridView').style.display =v==='grid' ?'':'none';
+  document.getElementById('vt-table').classList.toggle('active',v==='table');
+  document.getElementById('vt-grid').classList.toggle('active', v==='grid');
+  render();
+}
+
+// ── SIDEBAR TOGGLE ──
+function toggleSidebar(){
+  const aside=document.getElementById('sidebar');
+  const ov   =document.getElementById('sideOverlay');
+  if(window.innerWidth<=900){
+    aside.classList.toggle('open');
+    ov.classList.toggle('show');
+  }else{
+    aside.classList.toggle('closed');
+  }
+}
+function closeSidebar(){
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sideOverlay').classList.remove('show');
+}
+window.addEventListener('resize',()=>{
+  if(window.innerWidth>900){
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('sideOverlay').classList.remove('show');
+  }
+});
+
+// ── MODAL ──
+function openModal(id){
+  editingId=id||null;
+  document.getElementById('modalTitle').textContent=id?'Editar Produto':'Novo Produto';
+  const p=id?products.find(x=>x.id===id):null;
+  document.getElementById('f-nome').value   =p?p.nome:'';
+  document.getElementById('f-tipo').value   =p&&p.tipo!=='—'?p.tipo:'';
+  document.getElementById('f-coluna').value =p&&p.coluna!=='—'?p.coluna:'';
+  document.getElementById('f-estoque').value=p?p.estoque:'';
+  document.getElementById('f-status').value =p?p.status:'Em Estoque';
+  document.getElementById('overlay').classList.add('open');
+}
+function closeModal(e){
+  if(e&&e.target!==document.getElementById('overlay'))return;
+  document.getElementById('overlay').classList.remove('open');editingId=null;
+}
+
+// ── TOAST ──
+function toast(msg,type='success'){
+  const el=document.createElement('div');
+  el.className=`toast ${type}`;
+  el.innerHTML=`<span>${{success:'✅',warn:'⚠️',error:'❌'}[type]||'ℹ️'}</span>${msg}`;
+  document.getElementById('toastArea').appendChild(el);
+  setTimeout(()=>el.remove(),3500);
+}
+
+// ── INIT ──
+syncNow();
+</script>
+</body>
+</html>
