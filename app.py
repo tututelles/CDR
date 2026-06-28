@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import os
+import glob
 
 # Configuração da página
 st.set_page_config(
@@ -9,43 +10,40 @@ st.set_page_config(
     layout="wide"
 )
 
-CSV_FILE = "Produtos- CDR.xlsx - Página3.csv"
+# Tenta encontrar o arquivo correto de forma inteligente
+def encontrar_arquivo():
+    nome_exato = "Produtos- CDR.xlsx - Página3.csv"
+    if os.path.exists(nome_exato):
+        return nome_exato
+    arquivos_csv = glob.glob("*.csv")
+    if arquivos_csv:
+        return arquivos_csv[0]
+    return None
+
+CSV_FILE = encontrar_arquivo()
 
 def load_data():
-    if os.path.exists(CSV_FILE):
-        # Lê o CSV original
+    if CSV_FILE and os.path.exists(CSV_FILE):
         df = pd.read_csv(CSV_FILE)
-        
-        # Remove espaços ocultos dos nomes das colunas
         df.columns = df.columns.str.strip()
         
-        # Garante que vamos pegar apenas as colunas que importam para a tabela
-        # Se 'Nome do item' não for a primeira, filtramos pelas colunas nomeadas
         colunas_uteis = ['Nome do item', 'Tipo', 'Coluna 1', 'Estoque', 'Status']
-        
-        # Filtrando apenas as linhas onde o 'Nome do item' realmente contém texto válido
         df_clean = df[df['Nome do item'].notna()].copy()
         df_clean = df_clean[colunas_uteis]
         
-        # Renomeia para exibição limpa na interface
         df_clean.columns = ['Item', 'Tipo', 'Tamanho', 'Estoque', 'Status']
         
-        # Limpa espaços e formata os tipos de dados
         df_clean['Item'] = df_clean['Item'].astype(str).str.strip()
         df_clean['Tamanho'] = df_clean['Tamanho'].astype(str).str.strip()
         df_clean['Status'] = df_clean['Status'].astype(str).str.strip()
         df_clean['Estoque'] = pd.to_numeric(df_clean['Estoque'], errors='coerce').fillna(0).astype(int)
         
-        # Remove possíveis linhas de lixo ou títulos duplicados
-        df_clean = df_clean[df_clean['Item'] != 'Nome do item']
-        
         return df_clean.reset_index(drop=True)
     else:
-        st.error(f"Arquivo {CSV_FILE} não encontrado no diretório!")
         return pd.DataFrame(columns=['Item', 'Tipo', 'Tamanho', 'Estoque', 'Status'])
 
-# Inicializa ou força a atualização do estado do app
-if 'df_estoque' not in st.session_state:
+# Inicializa o estado do app
+if 'df_estoque' not in st.session_state or st.session_state.df_estoque.empty:
     st.session_state.df_estoque = load_data()
 
 df = st.session_state.df_estoque
@@ -56,6 +54,10 @@ st.title("🛡️ Gerenciador de Estoque - CDR")
 st.markdown("Controle de produtos e tirantes da Atlética.")
 st.write("---")
 
+if not CSV_FILE:
+    st.error("❌ Nenhum arquivo CSV foi detectado na pasta atual!")
+    st.stop()
+
 # Métricas Rápidas
 if not df.empty:
     col_m1, col_m2, col_m3 = st.columns(3)
@@ -64,7 +66,6 @@ if not df.empty:
     with col_m2:
         st.metric("Total de Peças Físicas", int(df['Estoque'].sum()))
     with col_m3:
-        # Conta usando a coluna ajustada 'Tamanho'
         grossos = len(df[df['Tamanho'].str.lower() == 'grosso'])
         finos = len(df[df['Tamanho'].str.lower() == 'fino'])
         st.metric("Modelos Grossos / Finos", f"{grossos} / {finos}")
@@ -99,15 +100,13 @@ with col_esquerda:
             if st.button("💾 Atualizar Dados", type="primary"):
                 st.session_state.df_estoque.at[idx, 'Estoque'] = int(novo_estoque)
                 st.session_state.df_estoque.at[idx, 'Status'] = novo_status
-                st.success(f"Alterações salvas para {item_selecionado} ({tamanho_selecionado})!")
+                st.success("Alterações salvas!")
                 st.rerun()
-        else:
-            st.warning("Selecione as características para editar.")
     else:
-        st.error("Nenhum dado disponível para edição.")
+        st.error("Nenhum dado disponível.")
 
 with col_direita:
-    st.subheader("📋 Tabela de Inventário")
+    st.subheader(f"📋 Tabela de Inventário ({CSV_FILE})")
     
     if not df.empty:
         busca = st.text_input("🔍 Filtrar por nome:")
@@ -115,11 +114,7 @@ with col_direita:
         if busca:
             df_display = df_display[df_display['Item'].str.contains(busca, case=False)]
             
-        st.dataframe(
-            df_display, 
-            use_container_width=True,
-            hide_index=True
-        )
+        st.dataframe(df_display, use_container_width=True, hide_index=True)
 
         csv_data = df.to_csv(index=False).encode('utf-8')
         st.download_button(
@@ -128,11 +123,8 @@ with col_direita:
             file_name="Estoque_CDR_Atualizado.csv",
             mime="text/csv"
         )
-    else:
-        st.warning("Não foi possível renderizar a tabela. Verifique o arquivo CSV.")
 
-# Botão para resetar cache se necessário
 st.write("---")
-if st.button("🔄 Forçar Recarregamento Total do CSV Original"):
+if st.button("🔄 Forçar Recarregamento"):
     st.session_state.df_estoque = load_data()
     st.rerun()
