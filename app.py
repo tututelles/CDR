@@ -63,49 +63,36 @@ col_esquerda, col_direita = st.columns([1, 1.5])
 with col_esquerda:
     st.subheader("📝 Editar Item")
     
-    item_selecionado = st.selectbox("Selecione o Produto:", df['Item'].unique())
+    # Seleção de produto de forma segura
+    opcoes_itens = df['Item'].unique()
+    item_selecionado = st.selectbox("Selecione o Produto:", opcoes_itens)
     
+    # Filtra tamanhos disponíveis para o item escolhido
     sub_df = df[df['Item'] == item_selecionado]
-    tamanho_selecionado = st.selectbox("Tamanho/Espessura:", sub_df['Tamanho'].unique())
+    opcoes_tamanho = sub_df['Tamanho'].unique()
+    tamanho_selecionado = st.selectbox("Tamanho/Espessura:", opcoes_tamanho)
     
-    # Localiza o índice exato na tabela
-    idx = df[(df['Item'] == item_selecionado) & (df['Tamanho'] == tamanho_selecionado)].index[0]
+    # Filtra a linha exata de forma segura
+    linha_filtrada = df[(df['Item'] == item_selecionado) & (df['Tamanho'] == tamanho_selecionado)]
     
-    estoque_atual = int(df.at[idx, 'Estoque'])
-    novo_estoque = st.number_input("Quantidade em Estoque:", min_value=0, value=estoque_atual, step=1)
-    
-    status_atual = df.at[idx, 'Status']
-    opcoes_status = ["Em Estoque", "Quase Acabando", "Esgotado"]
-    novo_status = st.selectbox("Status Atual:", opcoes_status, 
-                               index=opcoes_status.index(status_atual) if status_atual in opcoes_status else 0)
-    
-    if st.button("💾 Atualizar Dados", type="primary"):
-        st.session_state.df_estoque.at[idx, 'Estoque'] = int(novo_estoque)
-        st.session_state.df_estoque.at[idx, 'Status'] = novo_status
-        st.success(f"Alterações salvas para {item_selecionado} ({tamanho_selecionado})!")
-        st.rerun()
-
-with col_direita:
-    st.subheader("📋 Tabela de Inventário")
-    
-    busca = st.text_input("🔍 Filtrar por nome:")
-    df_display = df.copy()
-    if busca:
-        df_display = df_display[df_display['Item'].str.contains(busca, case=False)]
+    # Só prossegue se encontrar a combinação correta (evita o IndexError)
+    if not linha_filtrada.empty:
+        idx = linha_filtrada.index[0]
         
-    st.dataframe(
-        df_display, 
-        use_container_width=True,
-        hide_index=True,
-        column_config={
-            "Estoque": st.column_config.NumberColumn("Quantidade", format="%d"),
-        }
-    )
-
-    csv_data = df.to_csv(index=False).encode('utf-8')
-    st.download_button(
-        label="📥 Baixar Planilha Atualizada",
-        data=csv_data,
-        file_name="Estoque_CDR_Atualizado.csv",
-        mime="text/csv"
-    )
+        estoque_atual = int(df.at[idx, 'Estoque'])
+        novo_estoque = st.number_input("Quantidade em Estoque:", min_value=0, value=estoque_atual, step=1)
+        
+        status_atual = df.at[idx, 'Status']
+        opcoes_status = ["Em Estoque", "Quase Acabando", "Esgotado"]
+        
+        # Garante que o status atual é válido para o selectbox
+        idx_status = opcoes_status.index(status_atual) if status_atual in opcoes_status else 0
+        novo_status = st.selectbox("Status Atual:", opcoes_status, index=idx_status)
+        
+        if st.button("💾 Atualizar Dados", type="primary"):
+            st.session_state.df_estoque.at[idx, 'Estoque'] = int(novo_estoque)
+            st.session_state.df_estoque.at[idx, 'Status'] = novo_status
+            st.success(f"Alterações salvas para {item_selecionado} ({tamanho_selecionado})!")
+            st.rerun()
+    else:
+        st.info("Sincronizando características do item...")
