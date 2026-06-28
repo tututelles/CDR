@@ -26,15 +26,41 @@ CSV_FILE = "Produtos- CDR.xlsx - Página3.csv"
 @st.cache_data
 def load_data():
     if os.path.exists(CSV_FILE):
+        # Lê o arquivo CSV
         df = pd.read_csv(CSV_FILE)
-        # Seleciona as colunas reais do arquivo enviado
-        df_clean = df[['Nome do item', 'Tipo', 'Coluna 1', 'Estoque', 'Status']].dropna(subset=['Nome do item'])
-        df_clean.columns = ['Item', 'Tipo', 'Tamanho', 'Estoque', 'Status']
-        df_clean['Estoque'] = pd.to_numeric(df_clean['Estoque'], errors='coerce').fillna(0).astype(int)
+        
+        # Limpa espaços extras nos nomes das colunas (ex: 'Estoque ' vira 'Estoque')
+        df.columns = df.columns.str.strip()
+        
+        # Mapeamento exato das colunas conforme o seu arquivo original
+        colunas_necessarias = ['Nome do item', 'Tipo', 'Coluna 1', 'Estoque', 'Status']
+        
+        # Garante que todas as colunas existem no arquivo antes de filtrar
+        colunas_presentes = [col for col in colunas_necessarias if col in df.columns]
+        
+        # Filtra o DataFrame apenas com o que existe e remove linhas onde o nome do item é nulo
+        df_clean = df[colunas_presentes].dropna(subset=[colunas_presentes[0]])
+        
+        # Renomeia para exibição na interface
+        # Se alguma coluna falhar, define um nome padrão temporário
+        nomes_finais = {
+            'Nome do item': 'Item',
+            'Tipo': 'Tipo',
+            'Coluna 1': 'Tamanho',
+            'Estoque': 'Estoque',
+            'Status': 'Status'
+        }
+        df_clean = df_clean.rename(columns=nomes_finais)
+        
+        # Garante que a coluna Estoque é numérica
+        if 'Estoque' in df_clean.columns:
+            df_clean['Estoque'] = pd.to_numeric(df_clean['Estoque'], errors='coerce').fillna(0).astype(int)
+        else:
+            df_clean['Estoque'] = 0
+            
         return df_clean
     else:
         return pd.DataFrame(columns=['Item', 'Tipo', 'Tamanho', 'Estoque', 'Status'])
-
 # Inicializa o estado do app
 if 'df_estoque' not in st.session_state:
     st.session_state.df_estoque = load_data()
